@@ -15,3 +15,11 @@ src/devices/cpu/m68000/m68kops.cpp
 src/devices/cpu/m68000/m68kops.h
 mame64
 a7800
+
+# Runtime artifacts written by mame64 itself when run from this directory
+# (per-game config, history cache) -- not build output, not source.
+/cfg/
+/history/
+/snap/
+/diff/
+/nvram/
