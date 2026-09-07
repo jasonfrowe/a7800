@@ -34,7 +34,9 @@
 
 #include "window.h"
 #include "osdsdl.h"
+#ifndef NO_USE_BGFX
 #include "modules/render/drawbgfx.h"
+#endif
 #include "modules/render/drawsdl.h"
 #include "modules/render/draw13.h"
 #include "modules/monitor/monitor_common.h"
@@ -94,9 +96,11 @@ bool sdl_osd_interface::window_init()
 
 	switch (video_config.mode)
 	{
+	#ifndef NO_USE_BGFX
 		case VIDEO_MODE_BGFX:
 			renderer_bgfx::init(machine());
 			break;
+	#endif
 #if (USE_OPENGL)
 		case VIDEO_MODE_OPENGL:
 			renderer_ogl::init(machine());
@@ -198,9 +202,11 @@ void sdl_osd_interface::window_exit()
 		case VIDEO_MODE_SOFT:
 			renderer_sdl1::exit();
 			break;
+	#ifndef NO_USE_BGFX
 		case VIDEO_MODE_BGFX:
 			renderer_bgfx::exit();
 			break;
+	#endif
 #if (USE_OPENGL)
 		case VIDEO_MODE_OPENGL:
 			renderer_ogl::exit();

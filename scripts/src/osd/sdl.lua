@@ -375,7 +375,7 @@ project ("osd_" .. _OPTIONS["osd"])
 		}
 	end
 
-	if _OPTIONS["targetos"]=="macosx" then
+	if _OPTIONS["targetos"]=="macosx" and _OPTIONS["NO_USE_BGFX"]~="1" then
 		files {
 			MAME_DIR .. "src/osd/modules/debugger/debugosx.mm",
 			MAME_DIR .. "src/osd/modules/debugger/osx/breakpointsview.mm",

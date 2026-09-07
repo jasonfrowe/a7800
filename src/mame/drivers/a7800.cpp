@@ -183,6 +183,9 @@ Dan Boris
 #include "softlist.h"
 #include "speaker.h"
 
+#include <cstdlib>
+#include <fstream>
+
 
 #define CLK_NTSC  1789772
 #define CLK_PAL   1773447
@@ -218,10 +221,16 @@ public:
 	int m_p1_one_button;
 	int m_p2_one_button;
 	int m_bios_enabled;
+	bool m_cartbus_log_enabled;
+	uint64_t m_cartbus_log_rows;
+	uint64_t m_cartbus_log_limit;
+	std::ofstream m_cartbus_log;
 
 
 	DECLARE_READ8_MEMBER(bios_or_cart_r);
+	DECLARE_READ8_MEMBER(cart_40xx_r);
 	DECLARE_READ8_MEMBER(tia_r);
+	DECLARE_WRITE8_MEMBER(cart_40xx_w);
 	DECLARE_WRITE8_MEMBER(tia_w);
 	DECLARE_DRIVER_INIT(a7800_ntsc);
 	DECLARE_DRIVER_INIT(a7800a1_ntsc);
@@ -246,6 +255,7 @@ public:
 	DECLARE_WRITE8_MEMBER(riot_joystick_w);
 	DECLARE_READ8_MEMBER(riot_console_button_r);
 	DECLARE_WRITE8_MEMBER(riot_button_pullup_w);
+	void log_cartbus_cycle(offs_t console_addr, bool is_read, uint8_t write_data, uint8_t observed_data, const char *source);
 
 
 protected:
@@ -281,6 +291,32 @@ READ8_MEMBER(a7800_state::riot_joystick_r)
 	val |= m_joy2->joy_r() & 0x0F;
 
 	return val;
+}
+
+void a7800_state::log_cartbus_cycle(offs_t console_addr, bool is_read, uint8_t write_data, uint8_t observed_data, const char *source)
+{
+	if (!m_cartbus_log_enabled || console_addr < 0x4000)
+		return;
+
+	if (m_cartbus_log_limit && m_cartbus_log_rows >= m_cartbus_log_limit)
+		return;
+
+	const bool maria_cycle = (m_dmaactive != 0);
+	m_cartbus_log << m_maincpu->total_cycles() << ','
+				  << (maria_cycle ? "MARIA" : "CPU") << ','
+				  << util::string_format("0x%04X", unsigned(console_addr & 0xffff)) << ','
+				  << (is_read ? 'R' : 'W') << ','
+				  << util::string_format("0x%02X", unsigned(is_read ? 0 : write_data)) << ','
+				  << (maria_cycle ? 1 : 0) << ',';
+
+	if (is_read)
+		m_cartbus_log << util::string_format("0x%02X", unsigned(observed_data));
+
+	m_cartbus_log << ','
+				  << (is_read ? "OUT" : "IN") << ','
+				  << source << '\n';
+
+	++m_cartbus_log_rows;
 }
 
 WRITE8_MEMBER(a7800_state::riot_joystick_w)
@@ -563,7 +599,24 @@ READ8_MEMBER(a7800_state::bios_or_cart_r)
 	if (!(m_ctrl_reg & 0x04))
 		return m_bios[offset];
 	else
-		return m_cart->read_40xx(space, offset + 0x8000);
+	{
+		const uint8_t data = m_cart->read_40xx(space, offset + 0x8000);
+		log_cartbus_cycle(offset + 0xc000, true, 0x00, data, "BIOS_OR_CART_R");
+		return data;
+	}
+}
+
+READ8_MEMBER(a7800_state::cart_40xx_r)
+{
+	const uint8_t data = m_cart->read_40xx(space, offset);
+	log_cartbus_cycle(offset + 0x4000, true, 0x00, data, "CART_40XX_R");
+	return data;
+}
+
+WRITE8_MEMBER(a7800_state::cart_40xx_w)
+{
+	log_cartbus_cycle(offset + 0x4000, false, data, 0x00, "CART_40XX_W");
+	m_cart->write_40xx(space, offset, data);
 }
 
 /***************************************************************************
@@ -585,8 +638,8 @@ static ADDRESS_MAP_START( a7800_mem, AS_PROGRAM, 8, a7800_state )
 								// Hardware tests show that only the page at 0x2700 appears at
 								// 0x2800, and only on some hardware (MARIA? motherboard?) revisions,
 								// and even then with inconsistent and unreliable results.
-	AM_RANGE(0x4000, 0xffff) AM_DEVWRITE("cartslot", a78_cart_slot_device, write_40xx)
-	AM_RANGE(0x4000, 0xbfff) AM_DEVREAD("cartslot", a78_cart_slot_device, read_40xx)
+	AM_RANGE(0x4000, 0xffff) AM_WRITE(cart_40xx_w)
+	AM_RANGE(0x4000, 0xbfff) AM_READ(cart_40xx_r)
 	AM_RANGE(0xc000, 0xffff) AM_READ(bios_or_cart_r)    // here also the BIOS can be accessed
 ADDRESS_MAP_END
 
@@ -1458,6 +1511,21 @@ PALETTE_INIT_MEMBER(a7800_state,a7800pa2)
 
 void a7800_state::machine_start()
 {
+	m_cartbus_log_enabled = false;
+	m_cartbus_log_rows = 0;
+	m_cartbus_log_limit = 0;
+	if (const char *path = std::getenv("A7800_CARTBUS_LOG"))
+	{
+		m_cartbus_log.open(path, std::ios::out | std::ios::trunc);
+		if (m_cartbus_log.is_open())
+		{
+			m_cartbus_log_enabled = true;
+			if (const char *limit = std::getenv("A7800_CARTBUS_LIMIT"))
+				m_cartbus_log_limit = std::strtoull(limit, nullptr, 0);
+			m_cartbus_log << "cycle,owner,addr,rw,data,halt,expected_data,drive_mode,source\n";
+		}
+	}
+
 	save_item(NAME(m_p1_one_button));
 	save_item(NAME(m_p2_one_button));
 	save_item(NAME(m_bios_enabled));
@@ -1495,8 +1563,25 @@ void a7800_state::machine_start()
 			case A78_TYPE6_POK450:
 			case A78_TYPEA_POK450:
 			case A78_VERSA_POK450:
-				// POKEY and RAM regs at 0x800-0xFFF
-				m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0x0400, 0x04FF, read8_delegate(FUNC(a78_cart_slot_device::read_04xx),(a78_cart_slot_device*)m_cart), write8_delegate(FUNC(a78_cart_slot_device::write_04xx),(a78_cart_slot_device*)m_cart));
+				// llvm-mos-sdk-7800 fix: per the 7800 Software Guide's Appendix 1
+				// memory map, only $0400-$047F is "available for mapping by
+				// external devices" -- $0480-$04FF is genuine 6532 RIOT RAM
+				// ("Don't Use" for cart hardware) that the base a7800_mem map
+				// already backs with real storage (AM_RANGE(0x0480,0x04ff)
+				// AM_SHARE("riot_ram")). This install_readwrite_handler call
+				// previously claimed the full 0x0400-0x04FF, silently replacing
+				// that real RAM with a stub returning constant 0xFF for every
+				// read outside the POKEY sub-range (0x50-0x5F) -- confirmed via
+				// a debugger watchpoint trace that the real BIOS's own boot
+				// sequence walks its PC into this hijacked range and executes
+				// the resulting stream of 0xFF bytes as garbage 6502
+				// instructions (0xFF decodes as an undocumented opcode),
+				// progressively corrupting zero page until the CPU jumps
+				// through a corrupted pointer and crashes -- independent of
+				// anything the actual cart ROM contains. Narrowing this to
+				// 0x0400-0x047F leaves $0480-$04FF mapped to the real RIOT RAM
+				// as intended.
+				m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0x0400, 0x047F, read8_delegate(FUNC(a78_cart_slot_device::read_04xx),(a78_cart_slot_device*)m_cart), write8_delegate(FUNC(a78_cart_slot_device::write_04xx),(a78_cart_slot_device*)m_cart));
 				break;
 			case A78_TYPE0_POK800:
 			case A78_TYPE1_POK800:

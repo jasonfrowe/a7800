@@ -42,6 +42,16 @@ void debug_none::init_debugger(running_machine &machine)
 
 void debug_none::wait_for_debugger(device_t &device, bool firststop)
 {
+	// llvm-mos-sdk-7800: process any -debugscript commands (breakpoint/
+	// watchpoint setup, etc.) before resuming. The normal debugger_cpu
+	// stop loop (debugcpu.cpp) only calls process_source_file() from
+	// inside its own while(EXECUTION_STATE_STOPPED) loop, which this
+	// stub bypasses entirely by resuming immediately -- meaning a
+	// -debugscript's commands were previously silently never read at
+	// all under this "none" OSD backend, since it's built for headless
+	// (non-interactive) use with no other way to feed the debugger
+	// commands.
+	m_machine->debugger().cpu().process_source_file();
 	m_machine->debugger().cpu().get_visible_cpu()->debug()->go();
 }
 

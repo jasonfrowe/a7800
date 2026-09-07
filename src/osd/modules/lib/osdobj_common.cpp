@@ -217,7 +217,9 @@ osd_common_t::~osd_common_t()
 
 void osd_common_t::register_options()
 {
+	#ifndef NO_USE_BGFX
 	REGISTER_MODULE(m_mod_man, FONT_OSX);
+	#endif
 	REGISTER_MODULE(m_mod_man, FONT_WINDOWS);
 	REGISTER_MODULE(m_mod_man, FONT_DWRITE);
 	REGISTER_MODULE(m_mod_man, FONT_SDL);
@@ -237,13 +239,17 @@ void osd_common_t::register_options()
 	REGISTER_MODULE(m_mod_man, MONITOR_WIN32);
 	REGISTER_MODULE(m_mod_man, MONITOR_DXGI);
 
-#ifdef SDLMAME_MACOSX
+	#ifdef SDLMAME_MACOSX
+	#ifndef NO_USE_BGFX
 	REGISTER_MODULE(m_mod_man, DEBUG_OSX);
+	#endif
 #endif
 #ifndef OSD_MINI
 	REGISTER_MODULE(m_mod_man, DEBUG_WINDOWS);
 	REGISTER_MODULE(m_mod_man, DEBUG_QT);
+	#ifndef NO_USE_BGFX
 	REGISTER_MODULE(m_mod_man, DEBUG_IMGUI);
+	#endif
 	REGISTER_MODULE(m_mod_man, DEBUG_NONE);
 #endif
 

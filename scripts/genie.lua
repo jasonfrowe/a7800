@@ -963,7 +963,7 @@ end
 
 		local version = str_to_version(_OPTIONS["gcc_version"])
 		if string.find(_OPTIONS["gcc"], "clang") or string.find(_OPTIONS["gcc"], "pnacl") or string.find(_OPTIONS["gcc"], "asmjs") or string.find(_OPTIONS["gcc"], "android") then
-			if (version < 30400) then
+			if (version ~= 0 and version < 30400) then
 				print("Clang version 3.4 or later needed")
 				os.exit(-1)
 			end

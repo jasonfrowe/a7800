@@ -130,7 +130,13 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 #  endif
 #endif
 
-#if defined(MACOS) || defined(TARGET_OS_MAC)
+/* TARGET_OS_MAC is defined (via <TargetConditionals.h>) on every modern
+ * Apple platform, not just classic pre-X Mac OS as this whole block
+ * assumes -- excluding __APPLE__ (defined on real macOS/iOS/etc., which
+ * have a real fdopen()) keeps this guard scoped to its original intent
+ * (classic Mac OS / CodeWarrior builds) instead of clobbering fdopen's
+ * real prototype and breaking every modern macOS build. */
+#if (defined(MACOS) || defined(TARGET_OS_MAC)) && !defined(__APPLE__)
 #  define OS_CODE  7
 #  ifndef Z_SOLO
 #    if defined(__MWERKS__) && __dest_os != __be_os && __dest_os != __win32_os

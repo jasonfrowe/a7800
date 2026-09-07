@@ -15,6 +15,7 @@
 #include "textbuf.h"
 #include "debugger.h"
 #include <ctype.h>
+#include <cstdio>
 
 /***************************************************************************
     CONSTANTS
@@ -428,13 +429,34 @@ const char *debugger_console::cmderr_to_string(CMDERR error)
 ***************************************************************************/
 
 /*-------------------------------------------------
+    mirror_to_stdout - llvm-mos-sdk-7800 addition:
+    the "none" OSD debugger module (used for headless
+    -debugscript automation, see none.cpp) has no UI
+    that ever reads m_console_textbuf, so console
+    output -- including watchpoint/breakpoint action
+    printf's -- was otherwise completely invisible in
+    headless use. Mirror every console line to stdout
+    unconditionally: this fork exists specifically to
+    be scripted headlessly, so there's no normal-UI
+    case where this output would be unwanted noise.
+-------------------------------------------------*/
+
+static void mirror_to_stdout(const char *text)
+{
+	fputs(text, stdout);
+	fflush(stdout);
+}
+
+/*-------------------------------------------------
     vprintf - vprintfs the given arguments using
     the format to the debug console
 -------------------------------------------------*/
 
 void debugger_console::vprintf(util::format_argument_pack<std::ostream> const &args)
 {
-	text_buffer_print(m_console_textbuf, util::string_format(args).c_str());
+	std::string const text = util::string_format(args);
+	text_buffer_print(m_console_textbuf, text.c_str());
+	mirror_to_stdout(text.c_str());
 
 	/* force an update of any console views */
 	m_machine.debug_view().update_all(DVT_CONSOLE);
@@ -442,7 +464,9 @@ void debugger_console::vprintf(util::format_argument_pack<std::ostream> const &a
 
 void debugger_console::vprintf(util::format_argument_pack<std::ostream> &&args)
 {
-	text_buffer_print(m_console_textbuf, util::string_format(std::move(args)).c_str());
+	std::string const text = util::string_format(std::move(args));
+	text_buffer_print(m_console_textbuf, text.c_str());
+	mirror_to_stdout(text.c_str());
 
 	/* force an update of any console views */
 	m_machine.debug_view().update_all(DVT_CONSOLE);
@@ -456,7 +480,9 @@ void debugger_console::vprintf(util::format_argument_pack<std::ostream> &&args)
 
 void debugger_console::vprintf_wrap(int wrapcol, util::format_argument_pack<std::ostream> const &args)
 {
-	text_buffer_print_wrap(m_console_textbuf, util::string_format(args).c_str(), wrapcol);
+	std::string const text = util::string_format(args);
+	text_buffer_print_wrap(m_console_textbuf, text.c_str(), wrapcol);
+	mirror_to_stdout(text.c_str());
 
 	/* force an update of any console views */
 	m_machine.debug_view().update_all(DVT_CONSOLE);
@@ -464,7 +490,9 @@ void debugger_console::vprintf_wrap(int wrapcol, util::format_argument_pack<std:
 
 void debugger_console::vprintf_wrap(int wrapcol, util::format_argument_pack<std::ostream> &&args)
 {
-	text_buffer_print_wrap(m_console_textbuf, util::string_format(std::move(args)).c_str(), wrapcol);
+	std::string const text = util::string_format(std::move(args));
+	text_buffer_print_wrap(m_console_textbuf, text.c_str(), wrapcol);
+	mirror_to_stdout(text.c_str());
 
 	/* force an update of any console views */
 	m_machine.debug_view().update_all(DVT_CONSOLE);

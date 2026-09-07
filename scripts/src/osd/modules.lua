@@ -67,11 +67,9 @@ function osdmodulesbuild()
 		MAME_DIR .. "src/osd/modules/diagnostics/diagnostics_win32.cpp",
 		MAME_DIR .. "src/osd/modules/debugger/none.cpp",
 		MAME_DIR .. "src/osd/modules/debugger/debugwin.cpp",
-		MAME_DIR .. "src/osd/modules/debugger/debugimgui.cpp",
 		MAME_DIR .. "src/osd/modules/font/font_sdl.cpp",
 		MAME_DIR .. "src/osd/modules/font/font_windows.cpp",
 		MAME_DIR .. "src/osd/modules/font/font_dwrite.cpp",
-		MAME_DIR .. "src/osd/modules/font/font_osx.cpp",
 		MAME_DIR .. "src/osd/modules/font/font_none.cpp",
 		MAME_DIR .. "src/osd/modules/netdev/taptun.cpp",
 		MAME_DIR .. "src/osd/modules/netdev/pcap.cpp",
@@ -115,6 +113,18 @@ function osdmodulesbuild()
 		MAME_DIR .. "src/osd/modules/monitor/monitor_dxgi.cpp",
 		MAME_DIR .. "src/osd/modules/monitor/monitor_sdl.cpp",
 	}
+
+	if _OPTIONS["NO_USE_BGFX"]~="1" then
+		files {
+			MAME_DIR .. "src/osd/modules/debugger/debugimgui.cpp",
+		}
+	end
+
+	if _OPTIONS["NO_USE_BGFX"]~="1" then
+		files {
+			MAME_DIR .. "src/osd/modules/font/font_osx.cpp",
+		}
+	end
 	includedirs {
 		MAME_DIR .. "3rdparty/asio/include",
 	}
@@ -160,6 +170,11 @@ function osdmodulesbuild()
 		"__STDC_CONSTANT_MACROS",
 		"IMGUI_DISABLE_OBSOLETE_FUNCTIONS",
 	}
+	if _OPTIONS["NO_USE_BGFX"]=="1" then
+		defines {
+			"NO_USE_BGFX",
+		}
+	else
 
 	files {
 		MAME_DIR .. "src/osd/modules/render/drawbgfx.cpp",
@@ -216,6 +231,7 @@ function osdmodulesbuild()
 		MAME_DIR .. "3rdparty/bx/include",
 		MAME_DIR .. "3rdparty/rapidjson/include",
 	}
+	end
 
 	if _OPTIONS["NO_USE_PORTAUDIO"]=="1" then
 		defines {
@@ -519,6 +535,23 @@ if not _OPTIONS["NO_USE_PORTAUDIO"] then
 		_OPTIONS["NO_USE_PORTAUDIO"] = "0"
 	else
 		_OPTIONS["NO_USE_PORTAUDIO"] = "1"
+	end
+end
+
+newoption {
+	trigger = "NO_USE_BGFX",
+	description = "Disable BGFX renderer",
+	allowed = {
+		{ "0",  "Enable BGFX"  },
+		{ "1",  "Disable BGFX" },
+	},
+}
+
+if not _OPTIONS["NO_USE_BGFX"] then
+	if _OPTIONS["targetos"]=="macosx" then
+		_OPTIONS["NO_USE_BGFX"] = "1"
+	else
+		_OPTIONS["NO_USE_BGFX"] = "0"
 	end
 end
 

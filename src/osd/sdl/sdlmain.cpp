@@ -17,9 +17,6 @@
 #include <fontconfig/fontconfig.h>
 #endif
 #endif
-#ifdef SDLMAME_MACOSX
-#include <Carbon/Carbon.h>
-#endif
 #endif
 
 // standard includes
@@ -380,7 +377,9 @@ void sdl_osd_interface::video_register()
 #if USE_OPENGL
 	video_options_add("opengl", nullptr);
 #endif
+	#ifndef NO_USE_BGFX
 	video_options_add("bgfx", nullptr);
+	#endif
 	//video_options_add("auto", nullptr); // making d3d video default one
 }
 
