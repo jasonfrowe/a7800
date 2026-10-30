@@ -323,7 +323,7 @@ class Instruction:
 def LoadLst(filename):
     instructions = []
     ins = None
-    for n, line in enumerate(open(filename, "rU")):
+    for n, line in enumerate(open(filename, "r")):
         line = line.rstrip()
         if not line and ins:
             # new lines separate intructions

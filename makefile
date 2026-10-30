@@ -166,6 +166,10 @@ endif
 ifneq ($(filter aarch64%,$(UNAME_P)),)
 PLATFORM := arm64
 endif
+# Apple Silicon reports "arm64", which the arm% test above takes for 32-bit arm
+ifeq ($(UNAME_M),arm64)
+PLATFORM := arm64
+endif
 ifneq ($(filter powerpc,$(UNAME_P)),)
 PLATFORM := powerpc
 endif

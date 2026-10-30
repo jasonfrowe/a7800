@@ -635,7 +635,17 @@ else
 	defines {
 		"LSB_FIRST",
 	}
-	if _OPTIONS["targetos"]=="macosx" then
+	if _OPTIONS["targetos"]=="macosx" and _OPTIONS["PLATFORM"]=="arm64" then
+		-- Apple Silicon: a native arm64 build (the "x64" config is the 64-bit one)
+		configuration { "x64" }
+			buildoptions {
+				"-arch arm64",
+			}
+			linkoptions {
+				"-arch arm64",
+			}
+		configuration { }
+	elseif _OPTIONS["targetos"]=="macosx" then
 		configuration { "x64" }
 			buildoptions {
 				"-arch x86_64",
