@@ -36,4 +36,18 @@ Changes made for that purpose:
 * **Made headless debugger scripting (`-debugscript`) actually work.** Under the `-debugger none` OSD backend, `src/osd/modules/debugger/none.cpp` previously called `.go()` immediately on every stop without ever processing a pending `-debugscript`'s commands (`debugger_cpu::process_source_file()` only reads script lines while execution is stopped, a window this stub never left open) -- so `-debugscript` was a silent no-op under this backend. It now processes the script first. Separately, the debugger console's own output (`src/emu/debug/debugcon.cpp`) only ever went to an internal text buffer no UI reads under `-debugger none`; mirrored it to stdout so breakpoint/watchpoint output is actually visible for headless use. Together, these are what made real watchpoint-based diagnosis of the POKEY crash above possible in the first place.
 * **Added an opt-in cartridge-bus cycle logger** (`src/mame/drivers/a7800.cpp`), for diagnosing cart-memory-mapping issues without a full debugger session. Set `A7800_CARTBUS_LOG=<path>` to write a CSV of every CPU cycle touching `$4000` and above (cycle count, read/write, address, data, and the internal code path that serviced it); `A7800_CARTBUS_LIMIT=<n>` caps the row count for long runs.
 
+Development tools
+=================
+Opt-in aids for developing 7800 games, added for [Atari Gamma Force](https://github.com/jasonfrowe/AtariGammaForce). With none of them switched on, emulation is unchanged.
+
+* **Cycle profiler** (`A7800_PROFILE=<file>`). The CPU's SYNC line (an opcode fetch) charges the cycles since the previous fetch to the instruction that just finished. Cycles MARIA takes for DMA are counted apart, and time spent waiting in WSYNC goes to the instruction that wrote WSYNC, so the profile is exact and includes no sampling. On exit, the file lists `bank pc cycles count` for every instruction, busiest first. `bank` is the last value written to `$8000-$BFFF` (the SuperGame bank) for code there, `--` elsewhere. A header gives the frames, total cycles, DMA cycles, instructions and lowest stack pointer. With `A7800_PROFILE_WAIT=1` the profiler starts paused. A Lua script turns it on and off with `manager:machine():outputs():set_value("a7800_prof", 1)` (on) or `2` (off), for example to profile only a boss fight.
+* **MARIA figures as outputs.** At the end of each frame's visible lines, the driver sets these outputs, which a Lua script reads with `manager:machine():outputs():get_value(name)`:
+  * `maria_cycles`: MARIA DMA cycles in the frame.
+  * `maria_stolen`: CPU cycles the CPU spent halted for DMA.
+  * `maria_over`: lines that hit the 430-cycle DMA limit, which are drawn short.
+  * `maria_peak` and `maria_peak_line`: the busiest line's cycles and its number (0 = first visible).
+  * `maria_frames`: the frame count.
+* **Per-line DMA log** (`A7800_DMA_LOG=<file>`). One line per frame: `frame maria_cycles stolen over peak peak_line : ` followed by the MARIA cycles of each of the 243 visible lines. It shows which zones are heavy and when lines are cut short.
+* **ROM-write warnings** (`A7800_BUSWARN=1`). Prints each CPU write to cart space outside the SuperGame bank register (`$4000-$7FFF`, `$C000-$FFFF`) to stderr, once per PC (64 at most), with the frame, value, address, PC and bank. In a cart without RAM there, such a write is a stray store.
+
 None of the above are upstream MAME/7800-devtools changes -- they're specific to this fork's role as llvm-mos-sdk-7800's test emulator, and the intent is to keep them scoped that way (fix real bugs, add opt-in diagnostics) rather than diverge from upstream behavior for normal play.

@@ -24,6 +24,21 @@ public:
 	int m_devmode_dmacolor;
 	int m_devmode_dmacolorwidth;
 
+	// Development statistics, read by the driver (outputs, logs, profiler).
+	// MARIA cycles are its own (4 to a CPU cycle); "stolen" cycles are CPU
+	// cycles the CPU spent halted for DMA (not counting lines on which it was
+	// already waiting in WSYNC).
+	uint64_t m_stat_stolen;            // stolen CPU cycles since power-on
+	int m_stat_frames;                 // frames completed
+	// the last completed frame:
+	int m_stat_cycles;                 // MARIA DMA cycles, all lines
+	int m_stat_stolen_frame;           // stolen CPU cycles
+	int m_stat_over;                   // lines that hit the DMA limit (cut short)
+	int m_stat_peak;                   // the busiest line's MARIA cycles
+	int m_stat_peak_line;              // ... and that line (0 = first visible)
+	int m_stat_lines[243];             // each visible line's MARIA cycles
+	static constexpr int STAT_LIMIT = 430;
+
 	DECLARE_READ8_MEMBER(read);
 	DECLARE_WRITE8_MEMBER(write);
 
@@ -57,7 +72,12 @@ private:
 	unsigned int m_charbase;
 	bitmap_ind16 m_bitmap;
 
+	int m_acc_cycles, m_acc_stolen, m_acc_over, m_acc_peak, m_acc_peak_line;
+	int m_acc_lines[243];
+	int m_stat_vline;
+
 	void draw_scanline();
+	void stat_frame_done();
 	int is_holey(unsigned int addr);
 	int write_line_ram(int addr, uint8_t offset, int pal);
 

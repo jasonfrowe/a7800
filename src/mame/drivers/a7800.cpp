@@ -183,8 +183,14 @@ Dan Boris
 #include "softlist.h"
 #include "speaker.h"
 
+#include <algorithm>
+#include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 
 #define CLK_NTSC  1789772
@@ -226,6 +232,26 @@ public:
 	uint64_t m_cartbus_log_limit;
 	std::ofstream m_cartbus_log;
 
+	// Development tools (all opt-in; see README.md, "Development tools"):
+	// the cycle profiler (A7800_PROFILE), per-frame DMA outputs for Lua
+	// scripts, the per-line DMA log (A7800_DMA_LOG) and ROM-write warnings
+	// (A7800_BUSWARN).
+	bool m_prof_enabled;                 // A7800_PROFILE given
+	bool m_prof_on;                      // counting now (Lua output a7800_prof: 1 on, 2 off)
+	int m_prof_ctl;                      // the last a7800_prof value seen
+	std::string m_prof_path;
+	uint64_t m_prof_last;                // CPU cycle of the last opcode fetch
+	uint64_t m_prof_stolen_last;         // MARIA's stolen-cycle count then
+	uint64_t m_prof_cycles, m_prof_dma, m_prof_frames, m_prof_insns;
+	int m_prof_minsp;
+	std::unordered_map<uint32_t, std::pair<uint64_t, uint64_t>> m_prof; // (bank << 16 | pc) -> cycles, count
+	uint8_t m_bankreg;                   // the last value written to $8000-$BFFF (SuperGame bank)
+	int m_stat_frames_seen;
+	std::ofstream m_dma_log;
+	bool m_buswarn;
+	int m_buswarn_count;
+	std::unordered_set<uint32_t> m_buswarn_seen;
+
 
 	DECLARE_READ8_MEMBER(bios_or_cart_r);
 	DECLARE_READ8_MEMBER(cart_40xx_r);
@@ -256,6 +282,9 @@ public:
 	DECLARE_READ8_MEMBER(riot_console_button_r);
 	DECLARE_WRITE8_MEMBER(riot_button_pullup_w);
 	void log_cartbus_cycle(offs_t console_addr, bool is_read, uint8_t write_data, uint8_t observed_data, const char *source);
+	DECLARE_WRITE_LINE_MEMBER(cpu_sync_w);
+	void dev_frame_done();
+	void prof_write();
 
 
 protected:
@@ -589,6 +618,115 @@ TIMER_CALLBACK_MEMBER(a7800_state::maria_startdma)
 	m_dmaactive = 1;
 	m_maria->startdma(m_lines);
 	m_dmaactive = 0;
+	if (m_maria->m_stat_frames != m_stat_frames_seen)
+		dev_frame_done();
+}
+
+/***************************************************************************
+ DEVELOPMENT TOOLS
+ ***************************************************************************/
+
+// Once a frame (at the end of the visible lines): publish MARIA's figures for
+// the frame as outputs (Lua: manager:machine():outputs():get_value(name)),
+// log its lines, and follow the profiler's on/off control.
+void a7800_state::dev_frame_done()
+{
+	m_stat_frames_seen = m_maria->m_stat_frames;
+	output_manager &out = machine().output();
+	out.set_value("maria_frames", m_maria->m_stat_frames);
+	out.set_value("maria_cycles", m_maria->m_stat_cycles);
+	out.set_value("maria_stolen", m_maria->m_stat_stolen_frame);
+	out.set_value("maria_over", m_maria->m_stat_over);
+	out.set_value("maria_peak", m_maria->m_stat_peak);
+	out.set_value("maria_peak_line", m_maria->m_stat_peak_line);
+
+	if (m_dma_log.is_open())
+	{
+		m_dma_log << m_screen->frame_number() << ' ' << m_maria->m_stat_cycles << ' ' << m_maria->m_stat_stolen_frame
+				  << ' ' << m_maria->m_stat_over << ' ' << m_maria->m_stat_peak << ' ' << m_maria->m_stat_peak_line << " :";
+		for (int i = 0; i < 243; i++)
+			m_dma_log << ' ' << m_maria->m_stat_lines[i];
+		m_dma_log << '\n';
+	}
+
+	if (m_prof_enabled)
+	{
+		const int ctl = out.get_value("a7800_prof");
+		if (ctl != m_prof_ctl)
+		{
+			m_prof_ctl = ctl;
+			if (ctl == 1 || ctl == 2)
+			{
+				m_prof_on = (ctl == 1);
+				m_prof_last = m_maincpu->total_cycles();
+				m_prof_stolen_last = m_maria->m_stat_stolen;
+			}
+		}
+		if (m_prof_on)
+			m_prof_frames++;
+	}
+}
+
+// The CPU's SYNC line rises on each opcode fetch: the cycles since the last
+// one belong to the instruction that just finished (whose address is still
+// the CPU's PC), less the cycles MARIA took from it for DMA, which are
+// counted apart. Time spent waiting in WSYNC goes to the instruction that
+// wrote WSYNC.
+WRITE_LINE_MEMBER(a7800_state::cpu_sync_w)
+{
+	if (!state || !m_prof_on)
+		return;
+	const uint64_t now = m_maincpu->total_cycles();
+	const uint64_t delta = now - m_prof_last;
+	uint64_t dma = m_maria->m_stat_stolen - m_prof_stolen_last;
+	if (dma > delta)
+		dma = delta; // the rest of a halt counts at the next fetch
+	m_prof_last = now;
+	m_prof_stolen_last += dma;
+
+	const uint16_t pc = m_maincpu->pc();
+	const uint32_t bank = (pc >= 0x8000 && pc < 0xc000) ? m_bankreg : 0xff;
+	auto &e = m_prof[(bank << 16) | pc];
+	e.first += delta - dma;
+	e.second++;
+	m_prof_cycles += delta;
+	m_prof_dma += dma;
+	m_prof_insns++;
+	const int sp = m_maincpu->state_int(M6502_S);
+	if (sp < m_prof_minsp)
+		m_prof_minsp = sp;
+}
+
+// At exit: the profile, busiest instructions first. Lines are
+// "bank pc cycles count"; bank is the SuperGame bank value for $8000-$BFFF,
+// "--" elsewhere.
+void a7800_state::prof_write()
+{
+	FILE *f = std::fopen(m_prof_path.c_str(), "w");
+	if (!f)
+	{
+		std::fprintf(stderr, "a7800 profile: cannot write %s\n", m_prof_path.c_str());
+		return;
+	}
+	std::vector<std::pair<uint32_t, std::pair<uint64_t, uint64_t>>> rows(m_prof.begin(), m_prof.end());
+	std::sort(rows.begin(), rows.end(), [](const auto &a, const auto &b) { return a.second.first > b.second.first; });
+	std::fprintf(f, "# a7800 cycle profile: bank pc cycles count\n");
+	std::fprintf(f, "frames %llu\n", (unsigned long long)m_prof_frames);
+	std::fprintf(f, "cycles %llu\n", (unsigned long long)m_prof_cycles);
+	std::fprintf(f, "dma %llu\n", (unsigned long long)m_prof_dma);
+	std::fprintf(f, "instructions %llu\n", (unsigned long long)m_prof_insns);
+	std::fprintf(f, "minsp %02x\n", m_prof_minsp & 0xff);
+	for (const auto &r : rows)
+	{
+		const uint32_t bank = r.first >> 16;
+		if (bank == 0xff)
+			std::fprintf(f, "-- %04x %llu %llu\n", r.first & 0xffff, (unsigned long long)r.second.first, (unsigned long long)r.second.second);
+		else
+			std::fprintf(f, "%02x %04x %llu %llu\n", bank, r.first & 0xffff, (unsigned long long)r.second.first, (unsigned long long)r.second.second);
+	}
+	std::fclose(f);
+	std::fprintf(stderr, "a7800 profile: %llu frames, %llu cycles (%llu DMA) written to %s\n",
+		(unsigned long long)m_prof_frames, (unsigned long long)m_prof_cycles, (unsigned long long)m_prof_dma, m_prof_path.c_str());
 }
 
 
@@ -616,6 +754,23 @@ READ8_MEMBER(a7800_state::cart_40xx_r)
 WRITE8_MEMBER(a7800_state::cart_40xx_w)
 {
 	log_cartbus_cycle(offset + 0x4000, false, data, 0x00, "CART_40XX_W");
+	const offs_t addr = offset + 0x4000;
+	if (addr >= 0x8000 && addr < 0xc000)
+		m_bankreg = data;
+	else if (m_buswarn)
+	{
+		// a write to cart space outside the SuperGame bank register: in a cart
+		// without RAM there, a stray store (bad pointer, overrun table...)
+		const uint16_t pc = m_maincpu->pc();
+		const uint32_t key = (uint32_t(pc) << 8) | ((pc >= 0x8000 && pc < 0xc000) ? m_bankreg : 0xff);
+		if (m_buswarn_seen.insert(key).second && m_buswarn_count < 64)
+		{
+			std::fprintf(stderr, "a7800 buswarn: frame %lld: write $%02X to $%04X from PC $%04X (bank %d)\n",
+				(long long)m_screen->frame_number(), data, unsigned(addr), pc, (pc >= 0x8000 && pc < 0xc000) ? m_bankreg : -1);
+			if (++m_buswarn_count == 64)
+				std::fprintf(stderr, "a7800 buswarn: further warnings suppressed\n");
+		}
+	}
 	m_cart->write_40xx(space, offset, data);
 }
 
@@ -1526,6 +1681,29 @@ void a7800_state::machine_start()
 		}
 	}
 
+	m_prof_enabled = m_prof_on = false;
+	m_prof_ctl = 0;
+	m_prof_last = m_prof_stolen_last = 0;
+	m_prof_cycles = m_prof_dma = m_prof_frames = m_prof_insns = 0;
+	m_prof_minsp = 0x1ff;
+	m_bankreg = 0;
+	m_stat_frames_seen = 0;
+	if (const char *path = std::getenv("A7800_PROFILE"))
+	{
+		m_prof_path = path;
+		m_prof_enabled = true;
+		m_prof_on = (std::getenv("A7800_PROFILE_WAIT") == nullptr);
+		machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(&a7800_state::prof_write, this));
+	}
+	if (const char *path = std::getenv("A7800_DMA_LOG"))
+	{
+		m_dma_log.open(path, std::ios::out | std::ios::trunc);
+		if (m_dma_log.is_open())
+			m_dma_log << "# frame maria_cycles stolen over peak peak_line : MARIA cycles of visible lines 0-242 (limit 430)\n";
+	}
+	m_buswarn = (std::getenv("A7800_BUSWARN") != nullptr);
+	m_buswarn_count = 0;
+
 	save_item(NAME(m_p1_one_button));
 	save_item(NAME(m_p2_one_button));
 	save_item(NAME(m_bios_enabled));
@@ -1621,6 +1799,7 @@ static MACHINE_CONFIG_START( a7800_ntsc )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M6502, CLK_NTSC) /* 1.79 MHz (switches to 1.19 MHz on TIA or RIOT RAM access) */
 	MCFG_CPU_PROGRAM_MAP(a7800_mem)
+	MCFG_M6502_SYNC_CALLBACK(WRITELINE(a7800_state, cpu_sync_w))
 	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", a7800_state, interrupt, "screen", 0, 1)
 
 	/* video hardware */

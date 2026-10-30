@@ -116,6 +116,13 @@ void atari_maria_device::device_reset()
 
 	m_write_mode = 0;
 	m_dmaon = 0;
+	m_stat_stolen = 0;
+	m_stat_frames = 0;
+	m_stat_cycles = m_stat_stolen_frame = m_stat_over = m_stat_peak = m_stat_peak_line = 0;
+	m_acc_cycles = m_acc_stolen = m_acc_over = m_acc_peak = m_acc_peak_line = 0;
+	m_stat_vline = 0;
+	for (int i = 0; i < 243; i++)
+		m_stat_lines[i] = m_acc_lines[i] = 0;
 	m_vblank = 0x80;
 	m_dll = 0;
 	m_wsync = 0;
@@ -319,6 +326,29 @@ void atari_maria_device::draw_scanline()
 			}
 		}
 
+		// development statistics
+		{
+			const bool waiting = m_wsync; // the CPU already waits in WSYNC: no time is taken from it
+			int stolen = 0;
+			if (maria_cycles >= DMALIMIT)
+			{
+				m_acc_over++;
+				stolen = waiting ? 0 : 107; // halted to the end of the line (DMA starts at cycle 7 of ~113.5)
+			}
+			else if (!waiting)
+				stolen = (maria_cycles + 3) / 4;
+			m_stat_stolen += stolen;
+			m_acc_stolen += stolen;
+			m_acc_cycles += maria_cycles;
+			if (maria_cycles > m_acc_peak)
+			{
+				m_acc_peak = maria_cycles;
+				m_acc_peak_line = m_stat_vline;
+			}
+			if (m_stat_vline >= 0 && m_stat_vline < 243)
+				m_acc_lines[m_stat_vline] = maria_cycles;
+		}
+
 		// If MARIA used up all of the DMA time then the CPU can't run until next line...
 		if (maria_cycles>=DMALIMIT)
 		{
@@ -333,6 +363,23 @@ void atari_maria_device::draw_scanline()
 		if (!m_wsync)
 			m_cpu->spin_until_time(m_cpu->cycles_to_attotime((maria_cycles+3)/4));
 	} // if m_dmaon
+}
+
+// The visible lines are done: publish the frame's statistics and start anew.
+void atari_maria_device::stat_frame_done()
+{
+	m_stat_cycles = m_acc_cycles;
+	m_stat_stolen_frame = m_acc_stolen;
+	m_stat_over = m_acc_over;
+	m_stat_peak = m_acc_peak;
+	m_stat_peak_line = m_acc_peak_line;
+	for (int i = 0; i < 243; i++)
+	{
+		m_stat_lines[i] = m_acc_lines[i];
+		m_acc_lines[i] = 0;
+	}
+	m_acc_cycles = m_acc_stolen = m_acc_over = m_acc_peak = m_acc_peak_line = 0;
+	m_stat_frames++;
 }
 
 void atari_maria_device::display_visible(int pixelx)
@@ -425,7 +472,12 @@ void atari_maria_device::startdma(int lines)
 	}
 
 	if ((frame_scanline > 15) && (frame_scanline < (lines - 5)))
+	{
+		m_stat_vline = frame_scanline - 16;
 		draw_scanline();
+	}
+	if (frame_scanline == (lines - 5))
+		stat_frame_done();
 
 	if ((frame_scanline > 16) && (frame_scanline < (lines - 5)) && m_dmaon)
 	{
