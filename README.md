@@ -50,4 +50,8 @@ Opt-in aids for developing 7800 games, added for [Atari Gamma Force](https://git
 * **Per-line DMA log** (`A7800_DMA_LOG=<file>`). One line per frame: `frame maria_cycles stolen over peak peak_line : ` followed by the MARIA cycles of each of the 243 visible lines. It shows which zones are heavy and when lines are cut short.
 * **ROM-write warnings** (`A7800_BUSWARN=1`). Prints each CPU write to cart space outside the SuperGame bank register (`$4000-$7FFF`, `$C000-$FFFF`) to stderr, once per PC (64 at most), with the frame, value, address, PC and bank. In a cart without RAM there, such a write is a stray store.
 
+AstroCart math unit
+===================
+For programs written for the [AstroCart V4](https://github.com/jasonfrowe/Atari7800_AstroCart_V4) FPGA cart. A cart whose .a78 header has the characters `ACM` in bytes 59-61 gets a fixed-point arithmetic unit at `$0430-$043F` (16x16 multiply, 32/16 divide, 32-bit square root, a 32-bit accumulator, a pseudo-random byte), beside whatever mapper it uses. It is not a published 7800 standard: its definition is `docs/MATHUNIT.md` in that repository, and `src/devices/bus/a7800/astromath.h` here is a copy of the reference model there (`sim/math/astromath.h`); keep the two identical. Carts without the header bytes are unaffected.
+
 None of the above are upstream MAME/7800-devtools changes -- they're specific to this fork's role as llvm-mos-sdk-7800's test emulator, and the intent is to keep them scoped that way (fix real bugs, add opt-in diagnostics) rather than diverge from upstream behavior for normal play.

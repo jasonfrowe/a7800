@@ -6,6 +6,7 @@
 #pragma once
 
 #include "softlist_dev.h"
+#include "astromath.h"
 
 
 /***************************************************************************
@@ -124,6 +125,12 @@ public:
 	int get_cart_type() { return m_type; };
 	bool has_cart() { return m_cart != nullptr; }
 
+	// AstroCart math unit at $0430-$043F (header bytes 59-61 = "ACM";
+	// see docs/MATHUNIT.md in the AstroCart V4 repository)
+	bool has_math() const { return m_math; }
+	DECLARE_READ8_MEMBER(math_r);
+	DECLARE_WRITE8_MEMBER(math_w);
+
 	virtual iodevice_t image_type() const override { return IO_CARTSLOT; }
 	virtual bool is_readable()  const override { return 1; }
 	virtual bool is_writeable() const override { return 0; }
@@ -152,6 +159,8 @@ public:
 private:
 	device_a78_cart_interface*       m_cart;
 	int m_type;
+	bool m_math;
+	astromath m_am;
 
 	image_verify_result verify_header(char *header);
 	int validate_header(int head, bool log) const;

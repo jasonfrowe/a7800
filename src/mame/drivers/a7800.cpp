@@ -1781,6 +1781,9 @@ void a7800_state::machine_start()
 				m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0x3000, 0x3fff, read8_delegate(FUNC(a78_cart_slot_device::read_30xx),(a78_cart_slot_device*)m_cart), write8_delegate(FUNC(a78_cart_slot_device::write_30xx),(a78_cart_slot_device*)m_cart));
 				break;
 		}
+		// AstroCart math unit (header bytes 59-61 = "ACM"), beside any mapper
+		if (m_cart->has_math())
+			m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0x0430, 0x043f, read8_delegate(FUNC(a78_cart_slot_device::math_r),(a78_cart_slot_device*)m_cart), write8_delegate(FUNC(a78_cart_slot_device::math_w),(a78_cart_slot_device*)m_cart));
 	}
 }
 
