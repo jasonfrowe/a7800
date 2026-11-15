@@ -511,7 +511,7 @@ image_init_result a78_cart_slot_device::call_load()
 			if (m_math)
 			{
 				m_am.reset();
-				osd_printf_info("This cart uses the AstroCart math unit at $0430-$043F.\n");
+				osd_printf_info("This cart uses the AstroCart math unit at $0420-$043F.\n");
 			}
 
 			if (head[63])
@@ -697,10 +697,10 @@ std::string a78_cart_slot_device::get_default_card_software(get_default_card_sof
  read
  -------------------------------------------------*/
 
-// AstroCart math unit: offset 0-15 = $0430-$043F
+// AstroCart math unit: offset 0-31 = $0420-$043F
 READ8_MEMBER(a78_cart_slot_device::math_r)
 {
-	if (offset == 14 && machine().side_effect_disabled())
+	if (offset == 30 && machine().side_effect_disabled())
 		return uint8_t(m_am.x);       // the debugger looking: do not step the generator
 	return m_am.read(offset);
 }
