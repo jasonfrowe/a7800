@@ -53,6 +53,9 @@ public:
 	virtual uint8_t a7800_light_x_r() { return 0xff; };
 	virtual uint8_t a7800_light_y_r() { return 0xff; };
 	virtual void a7800_joy_w(uint8_t data) { };
+	// pins 1-4 as the console drives them: bit = 1 where the RIOT's port is an
+	// input (released, pulled up) or outputs 1 (for open-drain devices: SaveKey)
+	virtual void a7800_pins_w(uint8_t pins) { };
 
 	virtual bool has_pot_x() { return false; }
 	virtual bool has_pot_y() { return false; }
@@ -102,6 +105,7 @@ public:
 	DECLARE_READ8_MEMBER( light_y_r ) { return light_y_r(); }
 
 	void joy_w( uint8_t data ) { if ( exists() ) m_device->a7800_joy_w( data ); }
+	void pins_w( uint8_t pins ) { if ( exists() ) m_device->a7800_pins_w( pins ); }
 
 	bool exists() { return m_device != nullptr; }
 	bool has_pot_x() { return exists() && m_device->has_pot_x(); }

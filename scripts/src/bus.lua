@@ -60,6 +60,8 @@ if (BUSES["A7800_CTRL"]~=null) then
 		MAME_DIR .. "src/devices/bus/a7800_ctrl/stmouse.h",
 		MAME_DIR .. "src/devices/bus/a7800_ctrl/amigamouse.cpp",
 		MAME_DIR .. "src/devices/bus/a7800_ctrl/amigamouse.h",
+		MAME_DIR .. "src/devices/bus/a7800_ctrl/savekey.cpp",
+		MAME_DIR .. "src/devices/bus/a7800_ctrl/savekey.h",
 	}
 end
 

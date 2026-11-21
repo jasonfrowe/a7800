@@ -279,6 +279,8 @@ public:
 	TIMER_CALLBACK_MEMBER(maria_startvisible);
 	DECLARE_READ8_MEMBER(riot_joystick_r);
 	DECLARE_WRITE8_MEMBER(riot_joystick_w);
+	DECLARE_WRITE8_MEMBER(riot_w);
+	uint8_t m_swcha_out = 0, m_swacnt = 0;
 	DECLARE_READ8_MEMBER(riot_console_button_r);
 	DECLARE_WRITE8_MEMBER(riot_button_pullup_w);
 	void log_cartbus_cycle(offs_t console_addr, bool is_read, uint8_t write_data, uint8_t observed_data, const char *source);
@@ -357,6 +359,24 @@ WRITE8_MEMBER(a7800_state::riot_joystick_w)
 	/* Right controller port */
 	m_joy2->joy_w( data & 0x0f );
 
+}
+
+// RIOT writes, watched for port A's output and data direction: open-drain
+// devices on the controller ports (the SaveKey's I2C) are driven by the
+// direction register as much as by the output.
+WRITE8_MEMBER(a7800_state::riot_w)
+{
+	m_riot->write(space, offset, data);
+	if ((offset & 0x14) != 0x14 && (offset & 0x04) == 0 && !BIT(offset, 1))
+	{
+		if (offset & 1)
+			m_swacnt = data;
+		else
+			m_swcha_out = data;
+		uint8_t pins = (m_swcha_out & m_swacnt) | ~m_swacnt;
+		m_joy1->pins_w(pins >> 4);
+		m_joy2->pins_w(pins & 0x0f);
+	}
 }
 
 READ8_MEMBER(a7800_state::riot_console_button_r)
@@ -783,7 +803,7 @@ static ADDRESS_MAP_START( a7800_mem, AS_PROGRAM, 8, a7800_state )
 	AM_RANGE(0x0020, 0x003f) AM_MIRROR(0x300) AM_DEVREADWRITE("maria", atari_maria_device, read, write)
 	AM_RANGE(0x0040, 0x00ff) AM_RAMBANK("zpmirror") // mirror of 0x2040-0x20ff, for zero page
 	AM_RANGE(0x0140, 0x01ff) AM_RAMBANK("spmirror") // mirror of 0x2140-0x21ff, for stack page
-	AM_RANGE(0x0280, 0x029f) AM_MIRROR(0x160) AM_DEVREADWRITE("riot", riot6532_device, read, write)
+	AM_RANGE(0x0280, 0x029f) AM_MIRROR(0x160) AM_DEVREAD("riot", riot6532_device, read) AM_WRITE(riot_w)
 	AM_RANGE(0x0480, 0x04ff) AM_MIRROR(0x100) AM_RAM AM_SHARE("riot_ram")
 	AM_RANGE(0x1800, 0x1fff) AM_RAM AM_SHARE("6116_1")
 	AM_RANGE(0x2000, 0x27ff) AM_RAM AM_SHARE("6116_2")

@@ -76,6 +76,7 @@ void a7800_control_port_device::device_start()
 #include "trackball.h"
 #include "stmouse.h"
 #include "amigamouse.h"
+#include "savekey.h"
 
 SLOT_INTERFACE_START( a7800_control_port_devices )
 	SLOT_INTERFACE("proline_joystick", A7800_JOYSTICK_PROLINE)
@@ -87,4 +88,5 @@ SLOT_INTERFACE_START( a7800_control_port_devices )
 	SLOT_INTERFACE("keypad", A7800_KEYPAD)
 	SLOT_INTERFACE("amiga_mouse", A7800_AMIGAMOUSE)
 	SLOT_INTERFACE("st_mouse", A7800_STMOUSE)
+	SLOT_INTERFACE("savekey", A7800_SAVEKEY)
 SLOT_INTERFACE_END
