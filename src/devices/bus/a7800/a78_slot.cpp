@@ -120,6 +120,7 @@ a78_cart_slot_device::a78_cart_slot_device(const machine_config &mconfig, const 
 	, m_cart(nullptr)
 	, m_type(0)
 	, m_math(false)
+	, m_pokey440(false)
 {
 }
 
@@ -504,8 +505,16 @@ image_init_result a78_cart_slot_device::call_load()
 			else if (head[58] == 2)
 			{
 				osd_printf_info("This cart supports external NVRAM using SaveKey.\n");
-				osd_printf_info("This is not supported in MAME currently.\n");
+				osd_printf_info("Run it with -joy2 savekey to exploit this feature.\n");
 			}
+
+			// a second POKEY at $0440 (cart type bit 10) beside the one at $0450,
+			// for flat carts and the SuperGame variants (as the AstroCart does)
+			m_pokey440 = (m_type == A78_TYPE0_POK450 || m_type == A78_TYPE2_POK450
+					|| m_type == A78_TYPE6_POK450 || m_type == A78_TYPEA_POK450)
+					&& (head[53] & 0x04);
+			if (m_pokey440)
+				osd_printf_info("This cart has two POKEYs, at $0440 and $0450.\n");
 
 			m_math = (head[59] == 'A' && head[60] == 'C' && head[61] == 'M');
 			if (m_math)

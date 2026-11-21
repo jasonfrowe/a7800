@@ -143,7 +143,25 @@ a78_rom_act_device::a78_rom_act_device(const machine_config &mconfig, const char
 a78_rom_p450_device::a78_rom_p450_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: a78_rom_device(mconfig, A78_ROM_P450, tag, owner, clock)
 	, m_pokey450(*this, "pokey450")
+	, m_pokey440(*this, "pokey440")
 {
+}
+
+READ8_MEMBER(a78_rom_p450_device::read_04xx)
+{
+	if (offset >= 0x50 && offset < 0x60)
+		return m_pokey450->read(space, offset & 0x0f);
+	if (offset >= 0x40 && offset < 0x50 && static_cast<a78_cart_slot_device *>(owner())->has_pokey440())
+		return m_pokey440->read(space, offset & 0x0f);
+	return 0xff;
+}
+
+WRITE8_MEMBER(a78_rom_p450_device::write_04xx)
+{
+	if (offset >= 0x50 && offset < 0x60)
+		m_pokey450->write(space, offset & 0x0f, data);
+	else if (offset >= 0x40 && offset < 0x50 && static_cast<a78_cart_slot_device *>(owner())->has_pokey440())
+		m_pokey440->write(space, offset & 0x0f, data);
 }
 
 a78_rom_p800_device::a78_rom_p800_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
@@ -168,7 +186,25 @@ a78_rom_p800_pokey_device::a78_rom_p800_pokey_device(const machine_config &mconf
 a78_rom_p450_sg_device::a78_rom_p450_sg_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: a78_rom_sg_device(mconfig, A78_ROM_P450_SG, tag, owner, clock)
 	, m_pokey450(*this, "pokey450")
+	, m_pokey440(*this, "pokey440")
 {
+}
+
+READ8_MEMBER(a78_rom_p450_sg_device::read_04xx)
+{
+	if (offset >= 0x50 && offset < 0x60)
+		return m_pokey450->read(space, offset & 0x0f);
+	if (offset >= 0x40 && offset < 0x50 && static_cast<a78_cart_slot_device *>(owner())->has_pokey440())
+		return m_pokey440->read(space, offset & 0x0f);
+	return 0xff;
+}
+
+WRITE8_MEMBER(a78_rom_p450_sg_device::write_04xx)
+{
+	if (offset >= 0x50 && offset < 0x60)
+		m_pokey450->write(space, offset & 0x0f, data);
+	else if (offset >= 0x40 && offset < 0x50 && static_cast<a78_cart_slot_device *>(owner())->has_pokey440())
+		m_pokey440->write(space, offset & 0x0f, data);
 }
 
 a78_rom_p800_sg_device::a78_rom_p800_sg_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
@@ -181,7 +217,25 @@ a78_rom_p800_sg_device::a78_rom_p800_sg_device(const machine_config &mconfig, co
 a78_rom_p450_sg_ram_device::a78_rom_p450_sg_ram_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: a78_rom_sg_ram_device(mconfig, A78_ROM_P450_SG_RAM, tag, owner, clock)
 	, m_pokey450(*this, "pokey450")
+	, m_pokey440(*this, "pokey440")
 {
+}
+
+READ8_MEMBER(a78_rom_p450_sg_ram_device::read_04xx)
+{
+	if (offset >= 0x50 && offset < 0x60)
+		return m_pokey450->read(space, offset & 0x0f);
+	if (offset >= 0x40 && offset < 0x50 && static_cast<a78_cart_slot_device *>(owner())->has_pokey440())
+		return m_pokey440->read(space, offset & 0x0f);
+	return 0xff;
+}
+
+WRITE8_MEMBER(a78_rom_p450_sg_ram_device::write_04xx)
+{
+	if (offset >= 0x50 && offset < 0x60)
+		m_pokey450->write(space, offset & 0x0f, data);
+	else if (offset >= 0x40 && offset < 0x50 && static_cast<a78_cart_slot_device *>(owner())->has_pokey440())
+		m_pokey440->write(space, offset & 0x0f, data);
 }
 
 a78_rom_p800_sg_ram_device::a78_rom_p800_sg_ram_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
@@ -194,7 +248,25 @@ a78_rom_p800_sg_ram_device::a78_rom_p800_sg_ram_device(const machine_config &mco
 a78_rom_p450_sg9_device::a78_rom_p450_sg9_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: a78_rom_sg9_device(mconfig, A78_ROM_P450_SG9, tag, owner, clock)
 	, m_pokey450(*this, "pokey450")
+	, m_pokey440(*this, "pokey440")
 {
+}
+
+READ8_MEMBER(a78_rom_p450_sg9_device::read_04xx)
+{
+	if (offset >= 0x50 && offset < 0x60)
+		return m_pokey450->read(space, offset & 0x0f);
+	if (offset >= 0x40 && offset < 0x50 && static_cast<a78_cart_slot_device *>(owner())->has_pokey440())
+		return m_pokey440->read(space, offset & 0x0f);
+	return 0xff;
+}
+
+WRITE8_MEMBER(a78_rom_p450_sg9_device::write_04xx)
+{
+	if (offset >= 0x50 && offset < 0x60)
+		m_pokey450->write(space, offset & 0x0f, data);
+	else if (offset >= 0x40 && offset < 0x50 && static_cast<a78_cart_slot_device *>(owner())->has_pokey440())
+		m_pokey440->write(space, offset & 0x0f, data);
 }
 
 a78_rom_p800_sg9_device::a78_rom_p800_sg9_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
@@ -548,6 +620,10 @@ MACHINE_CONFIG_MEMBER( a78_rom_p450_device::device_add_mconfig )
 
 	MCFG_SOUND_ADD("pokey450", POKEY, CLK_NTSC)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "pokey_450", 1.00)
+
+	// silent unless the header asks for it (see read_04xx)
+	MCFG_SOUND_ADD("pokey440", POKEY, CLK_NTSC)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "pokey_450", 1.00)
 MACHINE_CONFIG_END
 
 MACHINE_CONFIG_MEMBER( a78_rom_p800_device::device_add_mconfig )
@@ -583,6 +659,10 @@ MACHINE_CONFIG_MEMBER( a78_rom_p450_sg_device::device_add_mconfig )
 
 	MCFG_SOUND_ADD("pokey450", POKEY, CLK_NTSC)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "pokey_450", 1.00)
+
+	// silent unless the header asks for it (see read_04xx)
+	MCFG_SOUND_ADD("pokey440", POKEY, CLK_NTSC)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "pokey_450", 1.00)
 MACHINE_CONFIG_END
 
 MACHINE_CONFIG_MEMBER( a78_rom_p800_sg_device::device_add_mconfig )
@@ -597,6 +677,10 @@ MACHINE_CONFIG_MEMBER( a78_rom_p450_sg_ram_device::device_add_mconfig )
 
 	MCFG_SOUND_ADD("pokey450", POKEY, CLK_NTSC)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "pokey_450", 1.00)
+
+	// silent unless the header asks for it (see read_04xx)
+	MCFG_SOUND_ADD("pokey440", POKEY, CLK_NTSC)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "pokey_450", 1.00)
 MACHINE_CONFIG_END
 
 MACHINE_CONFIG_MEMBER( a78_rom_p800_sg_ram_device::device_add_mconfig )
@@ -610,6 +694,10 @@ MACHINE_CONFIG_MEMBER( a78_rom_p450_sg9_device::device_add_mconfig )
 	MCFG_SPEAKER_STANDARD_MONO("pokey_450")
 
 	MCFG_SOUND_ADD("pokey450", POKEY, CLK_NTSC)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "pokey_450", 1.00)
+
+	// silent unless the header asks for it (see read_04xx)
+	MCFG_SOUND_ADD("pokey440", POKEY, CLK_NTSC)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "pokey_450", 1.00)
 MACHINE_CONFIG_END
 

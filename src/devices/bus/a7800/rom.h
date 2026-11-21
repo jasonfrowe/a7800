@@ -197,13 +197,16 @@ public:
 	a78_rom_p450_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_04xx) override { if (offset >= 0x50 && offset < 0x60) return m_pokey450->read(space, offset & 0x0f); else return 0xff; }
-	virtual DECLARE_WRITE8_MEMBER(write_04xx) override { if (offset >= 0x50 && offset < 0x60) m_pokey450->write(space, offset & 0x0f, data); }
+	// a second POKEY at $0440 when the header's cart type has bit 10 set
+	// ("dual POKEY 440 450", as the AstroCart and Trebor's ROM PROPack define it)
+	virtual DECLARE_READ8_MEMBER(read_04xx) override;
+	virtual DECLARE_WRITE8_MEMBER(write_04xx) override;
 
 protected:
 	virtual void device_add_mconfig(machine_config &config) override;
 
 	required_device<pokey_device> m_pokey450;
+	required_device<pokey_device> m_pokey440;
 };
 
 // ======================> a78_rom_p800_device
@@ -270,13 +273,15 @@ public:
 	a78_rom_p450_sg_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_04xx) override { if (offset >= 0x50 && offset < 0x60) return m_pokey450->read(space, offset & 0x0f); else return 0xff; }
-	virtual DECLARE_WRITE8_MEMBER(write_04xx) override { if (offset >= 0x50 && offset < 0x60) m_pokey450->write(space, offset & 0x0f, data); }
+	// a second POKEY at $0440 when the header's cart type has bit 10 set
+	virtual DECLARE_READ8_MEMBER(read_04xx) override;
+	virtual DECLARE_WRITE8_MEMBER(write_04xx) override;
 
 protected:
 	virtual void device_add_mconfig(machine_config &config) override;
 
 	required_device<pokey_device> m_pokey450;
+	required_device<pokey_device> m_pokey440;
 };
 
 // ======================> a78_rom_p800_sg_device
@@ -307,13 +312,15 @@ public:
 	a78_rom_p450_sg_ram_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_04xx) override { if (offset >= 0x50 && offset < 0x60) return m_pokey450->read(space, offset & 0x0f); else return 0xff; }
-	virtual DECLARE_WRITE8_MEMBER(write_04xx) override { if (offset >= 0x50 && offset < 0x60) m_pokey450->write(space, offset & 0x0f, data); }
+	// a second POKEY at $0440 when the header's cart type has bit 10 set
+	virtual DECLARE_READ8_MEMBER(read_04xx) override;
+	virtual DECLARE_WRITE8_MEMBER(write_04xx) override;
 
 protected:
 	virtual void device_add_mconfig(machine_config &config) override;
 
 	required_device<pokey_device> m_pokey450;
+	required_device<pokey_device> m_pokey440;
 };
 
 // ======================> a78_rom_p800_sg_ram_device
@@ -344,13 +351,15 @@ public:
 	a78_rom_p450_sg9_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// reading and writing
-	virtual DECLARE_READ8_MEMBER(read_04xx) override { if (offset >= 0x50 && offset < 0x60) return m_pokey450->read(space, offset & 0x0f); else return 0xff; }
-	virtual DECLARE_WRITE8_MEMBER(write_04xx) override { if (offset >= 0x50 && offset < 0x60) m_pokey450->write(space, offset & 0x0f, data); }
+	// a second POKEY at $0440 when the header's cart type has bit 10 set
+	virtual DECLARE_READ8_MEMBER(read_04xx) override;
+	virtual DECLARE_WRITE8_MEMBER(write_04xx) override;
 
 protected:
 	virtual void device_add_mconfig(machine_config &config) override;
 
 	required_device<pokey_device> m_pokey450;
+	required_device<pokey_device> m_pokey440;
 };
 
 // ======================> a78_rom_p800_sg9_device

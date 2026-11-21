@@ -128,6 +128,8 @@ public:
 	// AstroCart math unit at $0420-$043F (header bytes 59-61 = "ACM";
 	// see docs/MATHUNIT.md in the AstroCart V4 repository)
 	bool has_math() const { return m_math; }
+	// second POKEY at $0440 beside the one at $0450 (cart type bit 10)
+	bool has_pokey440() const { return m_pokey440; }
 	DECLARE_READ8_MEMBER(math_r);
 	DECLARE_WRITE8_MEMBER(math_w);
 
@@ -160,6 +162,7 @@ private:
 	device_a78_cart_interface*       m_cart;
 	int m_type;
 	bool m_math;
+	bool m_pokey440;
 	astromath m_am;
 
 	image_verify_result verify_header(char *header);
