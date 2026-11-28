@@ -700,7 +700,9 @@ int sdl_window_info::complete_create()
 	 *
 	 */
 	osd_printf_verbose("Enter sdl_info::create\n");
-	if (renderer().has_flags(osd_renderer::FLAG_NEEDS_OPENGL))
+	// (-video none: the window is never shown, and on SDL's dummy video
+	// driver there's no OpenGL: an ordinary window, SDL's software renderer)
+	if (renderer().has_flags(osd_renderer::FLAG_NEEDS_OPENGL) && !video_config.novideo)
 	{
 		SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
 
@@ -762,7 +764,7 @@ int sdl_window_info::complete_create()
 
 	if  (sdlwindow == nullptr )
 	{
-		if (renderer().has_flags(osd_renderer::FLAG_NEEDS_OPENGL))
+		if (renderer().has_flags(osd_renderer::FLAG_NEEDS_OPENGL) && !video_config.novideo)
 			osd_printf_error("OpenGL not supported on this driver: %s\n", SDL_GetError());
 		else
 			osd_printf_error("Window creation failed: %s\n", SDL_GetError());

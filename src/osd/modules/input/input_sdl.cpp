@@ -144,7 +144,7 @@ public:
 		{
 		case SDL_KEYDOWN:
 			keyboard.state[OSD_SDL_INDEX_KEYSYM(&sdlevent.key.keysym)] = 0x80;
-			if (sdlevent.key.keysym.sym < 0x20)
+			if (sdlevent.key.keysym.sym < 0x20 && !osd_common_t::s_window_list.empty())
 				machine().ui_input().push_char_event(osd_common_t::s_window_list.front()->target(), sdlevent.key.keysym.sym);
 			break;
 

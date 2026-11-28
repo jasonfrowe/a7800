@@ -481,6 +481,14 @@ void sdl_osd_interface::init(running_machine &machine)
 
 	/* Initialize SDL */
 
+	// -video none: SDL's dummy video driver (unless SDL_VIDEODRIVER says
+	// otherwise). On macOS the Cocoa driver makes the process a foreground
+	// app: a Dock icon, a window that takes the focus, and App Nap
+	// throttling it whenever it's in the background. Headless runs (tests,
+	// screenshots) need none of that.
+	if (strcmp(options().video(), OSDOPTVAL_NONE) == 0 && osd_getenv("SDL_VIDEODRIVER") == nullptr)
+		osd_setenv("SDL_VIDEODRIVER", "dummy", 1);
+
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO)) {
 		osd_printf_error("Could not initialize SDL %s\n", SDL_GetError());
 		exit(-1);

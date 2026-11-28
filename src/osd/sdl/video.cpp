@@ -131,6 +131,10 @@ static void check_osd_inputs(running_machine &machine)
 			std::static_pointer_cast<sdl_window_info>(curwin)->toggle_full_screen();
 	}
 
+	// (-video none: no windows, nothing more to toggle)
+	if (osd_common_t::s_window_list.empty())
+		return;
+
 	auto window = osd_common_t::s_window_list.front();
 	if (machine.ui_input().pressed(IPT_OSD_2))
 	{
